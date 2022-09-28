@@ -1,7 +1,4 @@
 # Created by use_targets().
-# Follow the comments below to fill in this target script.
-# Then follow the manual to check and run the pipeline:
-#   https://books.ropensci.org/targets/walkthrough.html#inspect-the-pipeline # nolint
 
 # Load packages required to define the pipeline:
 library(targets)
@@ -16,23 +13,19 @@ tar_option_set(
                "ggrepel",
                "fs",
                "qs",
+               "duckdb",
+               "DBI",
                "data.table",
                "microbenchmark",
                "vroom",
-               "arrow"), # packages that your targets need to run
-  format = "rds" # default storage format
-  # Set other options as needed.
+               "feather",
+               "fst",
+               "arrow"),
+  format = "rds"
 )
-
-# tar_make_clustermq() configuration (okay to leave alone):
-# options(clustermq.scheduler = "multicore")
-
-# tar_make_future() configuration (okay to leave alone):
-# Install packages {{future}}, {{future.callr}}, and {{future.batchtools}} to allow use_targets() to configure tar_make_future() options.
 
 # Load the R scripts with your custom functions:
 lapply(list.files("R", full.names = TRUE, recursive = TRUE), source)
-# source("other_functions.R") # Source other scripts as needed. # nolint
 
 # Replace the target list below with your own:
 list(
@@ -84,6 +77,21 @@ list(
     pattern = map(data)
   ),
   tar_target(
+    name = "feather",
+    command = execute_feather(data),
+    pattern = map(data)
+  ),
+  tar_target(
+    name = "fst",
+    command = execute_fst(data),
+    pattern = map(data)
+  ),
+  tar_target(
+    name = "duckdb",
+    command = execute_duck(data),
+    pattern = map(data)
+  ),
+  tar_target(
     name = "results",
     command = rbind(
       datatable_classic,
@@ -92,7 +100,10 @@ list(
       arrow_parquet,
       arrow_csv,
       vroom,
-      rds
+      rds,
+      feather,
+      fst,
+      duckdb
     ) |> 
       mutate(
         read = read / 1e9,
@@ -119,4 +130,3 @@ list(
     format = "file"
   )
 )
-

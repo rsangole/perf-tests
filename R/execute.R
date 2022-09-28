@@ -139,3 +139,86 @@ execute_vroom <- function(dat,
     size_mb = file.size(file) / 1024 ^ 2
   )
 }
+
+execute_feather <- function(dat,
+                            file = "temp/data.feather",
+                            mb_times = 10) {
+  write_time <- microbenchmark(write_feather(dat, file),
+                               times = mb_times) |>
+    as_tibble()
+  
+  read_time <- microbenchmark({
+    x = read_feather(file)
+  },
+  times = mb_times) |>
+    as_tibble()
+  
+  tibble(
+    method = "feather",
+    nrow = nrow(dat),
+    read = read_time$time,
+    write = write_time$time,
+    size_mb = file.size(file) / 1024 ^ 2
+  )
+}
+
+execute_fst <- function(dat,
+                        file = "temp/data.fst",
+                        mb_times = 10) {
+  write_time <- microbenchmark(write_fst(x = dat, 
+                                         path = file),
+                               times = mb_times) |>
+    as_tibble()
+  
+  read_time <- microbenchmark({
+    x = read_fst(path = file)
+  },
+  times = mb_times) |>
+    as_tibble()
+  
+  tibble(
+    method = "fst",
+    nrow = nrow(dat),
+    read = read_time$time,
+    write = write_time$time,
+    size_mb = file.size(file) / 1024 ^ 2
+  )
+}
+
+execute_duck <- function(dat,
+                         file = "temp/my-db.duckdb",
+                         mb_times = 10) {
+  
+  con = dbConnect(duckdb::duckdb(),
+                  dbdir = file,
+                  read_only = FALSE)
+  
+  write_time <- microbenchmark({
+    dbWriteTable(con,
+                 "duckdata",
+                 dat,
+                 overwrite = TRUE);
+  }  ,
+  times = mb_times) |>
+    as_tibble()
+  
+  read_time <- microbenchmark({
+    x = dbReadTable(con, "duckdata")
+  },
+  times = mb_times) |>
+    as_tibble()
+  
+  dbDisconnect(con, shutdown = TRUE)
+  
+  out <- tibble(
+    method = "duckdb",
+    nrow = nrow(dat),
+    read = read_time$time,
+    write = write_time$time,
+    size_mb = file.size(file) / 1024 ^ 2
+  )
+  
+  fs::file_delete(file)
+  
+  out
+}
